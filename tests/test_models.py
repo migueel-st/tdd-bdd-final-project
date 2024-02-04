@@ -26,7 +26,6 @@ While debugging just these tests it's convenient to use this:
 import os
 import logging
 import unittest
-from unittest.mock import patch, PropertyMock
 from decimal import Decimal
 from service.models import Product, Category, db, DataValidationError
 from service import app
@@ -134,27 +133,26 @@ class TestProductModel(unittest.TestCase):
         found_product = Product.find(product.id)
         self.assertEqual(found_product.description, product.description)
 
-
-    @patch("service.models.Product.id", new_callable=PropertyMock, return_value=None)
-    def test_update_a_product_exception(self, product_mock):
+    def test_update_a_product_exception(self):
         """Test that DataValidation error is raised when id is empty."""
         product = ProductFactory()
         product.create()
         with self.assertRaises(DataValidationError):
+            product.id = None
             product.update()
 
     def test_deserialize_with_invalid_boolean_attribute(self):
         "Test deserialization catches error with invalid available type."
         input_dict = {"name": "Screw", "description": "A screw", "available": "Yes",
-                      "price":1.12, "category":"TOOLS"}
+                      "price": 1.12, "category": "TOOLS"}
         product = ProductFactory()
         with self.assertRaises(DataValidationError):
             product.deserialize(input_dict)
-    
+
     def test_deserialize_with_invalid_category(self):
         "Test deserialization catches error with invalid category."
         input_dict = {"name": "Screw", "description": "A screw", "available": True,
-                      "price":1.12, "category": None}
+                      "price": 1.12, "category": None}
         product = ProductFactory()
         with self.assertRaises(DataValidationError):
             product.deserialize(input_dict)
@@ -238,4 +236,3 @@ class TestProductModel(unittest.TestCase):
         self.assertEqual(found.count(), count)
         for product in found:
             self.assertEqual(price, product.price)
-
