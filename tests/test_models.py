@@ -26,8 +26,9 @@ While debugging just these tests it's convenient to use this:
 import os
 import logging
 import unittest
+from unittest.mock import patch, PropertyMock
 from decimal import Decimal
-from service.models import Product, Category, db
+from service.models import Product, Category, db, DataValidationError
 from service import app
 from tests.factories import ProductFactory
 
@@ -133,6 +134,31 @@ class TestProductModel(unittest.TestCase):
         found_product = Product.find(product.id)
         self.assertEqual(found_product.description, product.description)
 
+
+    @patch("service.models.Product.id", new_callable=PropertyMock, return_value=None)
+    def test_update_a_product_exception(self, product_mock):
+        """Test that DataValidation error is raised when id is empty."""
+        product = ProductFactory()
+        product.create()
+        with self.assertRaises(DataValidationError):
+            product.update()
+
+    def test_deserialize_with_invalid_boolean_attribute(self):
+        "Test deserialization catches error with invalid available type."
+        input_dict = {"name": "Screw", "description": "A screw", "available": "Yes",
+                      "price":1.12, "category":"TOOLS"}
+        product = ProductFactory()
+        with self.assertRaises(DataValidationError):
+            product.deserialize(input_dict)
+    
+    def test_deserialize_with_invalid_category(self):
+        "Test deserialization catches error with invalid category."
+        input_dict = {"name": "Screw", "description": "A screw", "available": True,
+                      "price":1.12, "category": None}
+        product = ProductFactory()
+        with self.assertRaises(DataValidationError):
+            product.deserialize(input_dict)
+
     def test_delete_a_product(self):
         """Test that a product is deleted correctly in the db."""
         product = ProductFactory()
@@ -162,8 +188,8 @@ class TestProductModel(unittest.TestCase):
         for product in found_by_name:
             self.assertEqual(name, product.name)
 
-    def test_find_product_by_category(self):
-        """Test that a product is retrievable by category from the db."""
+    def test_find_product_by_availability(self):
+        """Test that a product is retrievable by availability from the db."""
         products = ProductFactory.create_batch(10)
         for product in products:
             product.create()
@@ -173,3 +199,43 @@ class TestProductModel(unittest.TestCase):
         self.assertEqual(found.count(), count)
         for product in found:
             self.assertEqual(available, product.available)
+
+    def test_find_product_by_category(self):
+        """Test that a product is retrievable by category from the db."""
+        products = ProductFactory.create_batch(10)
+        for product in products:
+            product.create()
+        category = products[0].category
+        count = len([product for product in products if product.category == category])
+        found = Product.find_by_category(category)
+        self.assertEqual(found.count(), count)
+        for product in found:
+            self.assertEqual(category, product.category)
+
+    def test_find_product_by_price(self):
+        """Test that a product is retrievable by price from the db."""
+        products = ProductFactory.create_batch(10)
+        for product in products:
+            product.price = 100.00
+            product.create()
+        price = products[0].price
+        count = len([product for product in products if product.price == price])
+        found = Product.find_by_price(price)
+        self.assertEqual(found.count(), count)
+        for product in found:
+            self.assertEqual(price, product.price)
+
+    def test_find_product_by_price_with_strings(self):
+        """Test that a product is retrievable by price using strings as price from the db."""
+        products = ProductFactory.create_batch(10)
+        test_price = "22.22"
+        for product in products:
+            product.price = test_price
+            product.create()
+        price = products[0].price
+        count = len([product for product in products if product.price == price])
+        found = Product.find_by_price(test_price)
+        self.assertEqual(found.count(), count)
+        for product in found:
+            self.assertEqual(price, product.price)
+
