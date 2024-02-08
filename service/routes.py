@@ -24,6 +24,7 @@ from service.models import Product, Category
 from service.common import status  # HTTP Status Codes
 from . import app
 
+
 ######################################################################
 # H E A L T H   C H E C K
 ######################################################################
@@ -106,23 +107,27 @@ def list_products():
     app.logger.info("Request to List products ...")
     name = request.args.get("name")
     category = request.args.get("category")
+    available = request.args.get("available")
     if name:
         app.logger.info(f"Request to find products by name: {name}")
         products = Product.find_by_name(name)
     elif category:
         app.logger.info(f"Request to find products by category: {category}")
         category_value = getattr(Category, category.upper())
-        products = Product.find_by_category(category)
+        products = Product.find_by_category(category_value)
+    elif available:
+        app.logger.info(f"Request to find products by availability: {available}")
+        available_value = available.lower() in {"true", "yes"}
+        products = Product.find_by_availability(available_value)
     else:
-        app.logger.info(f"Request to find all products")
+        app.logger.info("Request to find all products")
         products = Product.all()
-
     if not products:
         return [], status.HTTP_204_NO_CONTENT
     serialized = [product.serialize() for product in products]
     app.logger.info(f"Found {len(serialized)} products")
     return serialized, status.HTTP_200_OK
-    
+
 
 ######################################################################
 # R E A D   A   P R O D U C T
@@ -156,10 +161,10 @@ def update_products(product_id):
     check_content_type("application/json")
     data = request.get_json()
     app.logger.info("Processing: %s", data)
-    product = Product.find(data["id"])
+    product = Product.find(product_id)
     product.deserialize(data)
     product.update()
-    app.logger.info("Product with id [%s] was updated!", product.id)
+    app.logger.info("Product with id [%s] was updated!", product_id)
     return product.serialize(), status.HTTP_200_OK
 
 ######################################################################

@@ -28,8 +28,8 @@ import os
 import logging
 from decimal import Decimal
 from unittest import TestCase
-from service import app
 from urllib.parse import quote_plus
+from service import app
 from service.common import status
 from service.models import db, init_db, Product
 from tests.factories import ProductFactory
@@ -229,19 +229,31 @@ class TestProductRoutes(TestCase):
         self.assertEqual(len(data), n_same_name)
         for product in data:
             self.assertEqual(product["name"], test_name)
-        
+
     def test_get_product_by_category(self):
         """It should list all products by their category"""
         products = self._create_products(5)
         test_category = products[0].category
         n_same_category = len([product for product in products if product.category == test_category])
-        request_url = BASE_URL + f"?category={test_category}"
+        request_url = BASE_URL + "?category=" + test_category.name
         request = self.client.get(request_url)
         self.assertEqual(request.status_code, status.HTTP_200_OK)
         data = request.get_json()
         self.assertEqual(len(data), n_same_category)
         for product in data:
-            self.assertEqual(product["category"], test_category)
+            self.assertEqual(product["category"], test_category.name)
+
+    def test_get_product_by_availability(self):
+        """It should list all products by their availability"""
+        products = self._create_products(10)
+        n_found = len([product for product in products if product.available is True])
+        request_url = BASE_URL + "?available=true"
+        request = self.client.get(request_url)
+        self.assertEqual(request.status_code, status.HTTP_200_OK)
+        data = request.get_json()
+        self.assertEqual(len(data), n_found)
+        for product in data:
+            self.assertEqual(product["available"], True)
 
     ######################################################################
     # Utility functions
